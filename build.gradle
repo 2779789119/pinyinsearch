@@ -13,7 +13,12 @@ apply plugin: 'eclipse'
 apply plugin: 'maven-publish'
 
 version = "${mod_version}"
-group = 'com.pinyinsearch'
+// ★ group 不能写死：JitPack 调用构建时会传 -Pgroup=com.github.2779789119
+//   （它的对外坐标固定是 com.github.<user>:<repo>:<tag>）。
+//   这里写死会把 -P 直接覆盖掉，产物发到别的 groupId 下，JitPack 就收不到，
+//   构建日志末尾只会留一句 "No build artifacts found"。
+//   -P 没传时（本地构建）project.group 是空串，回退到项目自身的 group。
+group = project.group ?: 'com.pinyinsearch'
 archivesBaseName = "pinyin_search-${minecraft_version}"
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
@@ -110,6 +115,35 @@ test {
 java {
     withSourcesJar()
     withJavadocJar()
+}
+
+// ============================================================
+// 发布（依赖方通过 JitPack 坐标 com.github.2779789119:pinyinsearch:<tag> 获取）
+//   * maven-publish 插件只提供任务，不会自动决定「发布什么」—— 不写这段，
+//     publishToMavenLocal 永远 UP-TO-DATE、什么都不产出，JitPack 报
+//     "No build artifacts found"（Build 却显示 SUCCESSFUL）。
+//   * artifactId 必须显式写成 pinyinsearch：默认取项目名 pinyin_search（带下划线），
+//     与仓库名对不上，JitPack 就认不出产物。
+//   * group / version 见上方（group 从 -P 接收，version 取 mod_version，需与 tag 一致）。
+//   * from components.java 会连带发布 -sources.jar / -javadoc.jar（见上方 java {}）。
+// ============================================================
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId = 'pinyinsearch'
+            from components.java
+        }
+    }
+}
+
+// jar 由 reobfJar 就地重映射（jar.finalizedBy('reobfJar')），而 finalizer 相对其它任务的
+// 完成时机没有保证 —— 显式让发布任务排在 reobfJar 之后，
+// 否则可能把未做 SRG 重映射的 jar 发出去（依赖方在正式环境加载时才炸）。
+tasks.matching {
+    it.name == 'publishMavenJavaPublicationToMavenLocal' ||
+            it.name == 'publishMavenJavaPublicationToMavenRepository'
+}.configureEach {
+    dependsOn tasks.named('reobfJar')
 }
 
 tasks.named('javadoc', Javadoc).configure {

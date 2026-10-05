@@ -37,7 +37,7 @@ repositories { maven { url 'https://jitpack.io' } }
 
 dependencies {
     // soft dependency: compile-time only, players/packs provide it at runtime
-    compileOnly 'com.github.2779789119:pinyinsearch:1.1.2'
+    compileOnly 'com.github.2779789119:pinyinsearch:1.1.3'
 }
 ```
 
@@ -163,9 +163,9 @@ equivalence…) → [`docs/API.md`](docs/API.md) §7; the regression assertions 
 - **Hard dependency + jarJar** (transparent to players): embed it in your own jar; costs ~204KB per embedding mod.
 
 ```gradle
-compileOnly 'com.github.2779789119:pinyinsearch:1.1.2'            // ✅
-compileOnly 'com.github.2779789119:pinyinsearch:1.1.2:javadoc'    // Chinese JavaDoc on hover
-compileOnly 'com.github.2779789119:pinyinsearch:1.1.2:sources'
+compileOnly 'com.github.2779789119:pinyinsearch:1.1.3'            // ✅
+compileOnly 'com.github.2779789119:pinyinsearch:1.1.3:javadoc'    // Chinese JavaDoc on hover
+compileOnly 'com.github.2779789119:pinyinsearch:1.1.3:sources'
 // compileOnly 'com.github.2779789119.pinyinsearch:pinyin_search:1.1.2'  // ❌ do not write com.github.User.Repo
 ```
 
