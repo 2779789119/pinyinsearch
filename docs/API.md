@@ -14,9 +14,9 @@
 
 ```gradle
 // IDE 里能悬停看中文 JavaDoc（多数 IDE 会自动拉取，拉不到就显式加 classifier）
-compileOnly 'com.github.2779789119:pinyinsearch:1.1.0'
-compileOnly 'com.github.2779789119:pinyinsearch:1.1.0:javadoc'
-compileOnly 'com.github.2779789119:pinyinsearch:1.1.0:sources'
+compileOnly 'com.github.2779789119:pinyinsearch:1.1.1'
+compileOnly 'com.github.2779789119:pinyinsearch:1.1.1:javadoc'
+compileOnly 'com.github.2779789119:pinyinsearch:1.1.1:sources'
 ```
 
 > 改了 `api` 包后，请跑 `gradlew javadocToDocs` 重新同步 `docs/apidocs/`（CI 里也会重新生成）。
@@ -293,7 +293,7 @@ matcher.searchIndices("zsj");                    // 不做拼音 ❌
 
 ```gradle
 repositories { maven { url 'https://jitpack.io' } }
-dependencies { compileOnly 'com.github.2779789119:pinyinsearch:1.1.0' }
+dependencies { compileOnly 'com.github.2779789119:pinyinsearch:1.1.1' }
 ```
 
 ```java

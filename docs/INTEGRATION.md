@@ -34,7 +34,7 @@ repositories {
 
 dependencies {
     // 只编译期需要，运行期靠玩家安装；你的 jar 不会变大
-    compileOnly 'com.github.2779789119:pinyinsearch:1.1.0'
+    compileOnly 'com.github.2779789119:pinyinsearch:1.1.1'
 }
 ```
 
@@ -44,8 +44,8 @@ dependencies {
 
 ```gradle
 dependencies {
-    compileOnly 'com.github.2779789119:pinyinsearch:1.1.0'   // 编译期 API
-    jarJar      'com.github.2779789119:pinyinsearch:1.1.0'   // 嵌进自己的 jar
+    compileOnly 'com.github.2779789119:pinyinsearch:1.1.1'   // 编译期 API
+    jarJar      'com.github.2779789119:pinyinsearch:1.1.1'   // 嵌进自己的 jar
 }
 ```
 
@@ -60,7 +60,7 @@ side = "BOTH"
 ```
 
 > 想给 IDE 悬停文档，再加两条（可选）：
-> `compileOnly 'com.github.2779789119:pinyinsearch:1.1.0:javadoc'` 与 `:sources`。
+> `compileOnly 'com.github.2779789119:pinyinsearch:1.1.1:javadoc'` 与 `:sources`。
 
 ---
 

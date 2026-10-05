@@ -1,8 +1,8 @@
 # Pinyin Search API
 
 **A pinyin search library *for mod developers*.** One dependency line, three lines of code.
-No GUI injection, no JEI/REI takeover, no player-facing UI — it is a *capability provider*, not a
-replacement for JustEnoughCharacters.
+No GUI injection, no JEI/REI takeover, no player-facing UI — it is a *capability provider*,
+not a replacement for JustEnoughCharacters.
 
 **License: MIT** (this project) · bundled PinIn keeps its own MIT notice.
 
@@ -10,32 +10,23 @@ replacement for JustEnoughCharacters.
 |---|---|
 | modid | `pinyin_search` |
 | Loader / MC | Forge 47.x / 1.20.1 |
-| Dependencies | **none** |
-| Size | ~204 KB |
 | Java package | `com.pinyinsearch` |
+| Dependencies | **none** |
+| Size | ~204 KB (pinyin table included, 302 KB compressed) |
 
 [中文说明](README.md)
 
 ---
 
-## 📖 API documentation
+## 📖 Documentation
 
 | What you want | Where |
 |---|---|
-| Read the API end to end (parameters, return values, null/thread/exception semantics, copy-paste snippets) | **[`docs/API.md`](docs/API.md)** (Chinese) |
-| Open offline HTML (double-click, or zip the folder and hand it to someone) | [`docs/apidocs/index.html`](docs/apidocs/index.html) |
-| Hover documentation inside your IDE (easiest) | JitPack `-javadoc` / `-sources` artifacts |
-
-```gradle
-compileOnly 'com.github.2779789119:pinyinsearch:1.1.0'
-compileOnly 'com.github.2779789119:pinyinsearch:1.1.0:javadoc'
-compileOnly 'com.github.2779789119:pinyinsearch:1.1.0:sources'
-```
-
-```bash
-./gradlew javadoc          # -> build/docs/javadoc
-./gradlew javadocToDocs    # sync into docs/apidocs
-```
+| **Integrate it into your mod** (dependency + bridge class + search-box recipes, copy-paste ready) | [`docs/INTEGRATION.md`](docs/INTEGRATION.md) (Chinese) |
+| **Read the API end to end** (parameters / return values / null / thread / exception semantics + snippets) | [`docs/API.md`](docs/API.md) (Chinese) |
+| **Offline HTML** (double-click `index.html`, or zip the folder and hand it to someone) | [`docs/apidocs/index.html`](docs/apidocs/index.html) |
+| **Online HTML** | `https://2779789119.github.io/pinyinsearch/` (published by CI once Pages is enabled) |
+| Hover documentation inside your IDE | JitPack `:javadoc` / `:sources` artifacts (see §7) |
 
 ---
 
@@ -45,7 +36,8 @@ compileOnly 'com.github.2779789119:pinyinsearch:1.1.0:sources'
 repositories { maven { url 'https://jitpack.io' } }
 
 dependencies {
-    compileOnly 'com.github.2779789119:pinyinsearch:1.1.0'   // soft dependency
+    // soft dependency: compile-time only, players/packs provide it at runtime
+    compileOnly 'com.github.2779789119:pinyinsearch:1.1.1'
 }
 ```
 
@@ -62,31 +54,29 @@ return text.toLowerCase(Locale.ROOT).contains(query.toLowerCase(Locale.ROOT));
 > ⚠️ The snippet above is only safe because `PinyinSearch` is resolved *lazily*, inside the branch.
 > **Never** put `PinyinSearch` in the type of a static field/constant and never extend/implement it —
 > that would throw `NoClassDefFoundError` during class loading, leaving no chance to fall back.
-> For extra safety, wrap the call in a tiny class (e.g. `PinyinSearchBridge`).
+> For extra safety, wrap the call in a tiny bridge class, see [`docs/INTEGRATION.md`](docs/INTEGRATION.md) §2.
 
-### API surface
+### Common API
 
 ```java
-PinyinSearch.matches(text, query);                       // single pair, default Profile
-PinyinSearch.matches(text, query, profile);              // single pair, custom Profile
+PinyinSearch.matches(text, query);               // single pair (small lists, no index needed)
+PinyinSearch.matches(text, query, fuzzyProfile); // relaxed matching (fuzzy sounds → more false positives)
 
-Matcher m = PinyinSearch.matcher(pool);                  // pool: stable, ordered List<String>
-m.searchIndices("zsj");                                  // ascending indices
-m.search("zsj");                                         // matched strings, order + duplicates kept
+Matcher m = PinyinSearch.matcher(pool);          // large data set: build once, query many times
+List<Integer> idx = m.searchIndices("zsj");      // ascending indices
+List<String>  hit = m.search("zsj");             // matched strings, pool order + duplicates kept
 
-Matcher raw = Matcher.literal(pool);                     // plain contains, no pinyin
-
-Profile fuzzy = PinyinSearch.profile().allFuzzy(true).build();
-Profile sp    = PinyinSearch.profile().scheme(Profile.Scheme.SHUANGPIN_XIAOHE).build();
-Profile big   = PinyinSearch.profile().engine(Profile.Engine.TREE).build();
-
-PinyinSearch.normalize(raw);                             // lower-case + full-width→half-width + strip
-PinyinSearch.isAvailable();                              // capability probe, cheap
+PinyinSearch.normalize(raw);                     // lower-case + full-width→half-width + strip
 ```
+
+Full signatures and examples → [`docs/API.md`](docs/API.md)
+
+---
 
 ## 2. Capability matrix
 
-Every capability comes from the bundled PinIn; this library only exposes it and picks defaults.
+**Every capability comes from the bundled PinIn; this library only exposes it and picks defaults.
+It invents no pinyin logic.**
 
 | Capability | Supported | How / default | Example |
 |---|---|---|---|
@@ -96,136 +86,117 @@ Every capability comes from the bundled PinIn; this library only exposes it and 
 | Tones (optional) | ✅ always on | `PinyinFormat.NUMBER` | `zhong1国`, `zhen1` |
 | Shuangpin (Ziranma / Xiaohe) | ✅ **experimental**, off | `Scheme.SHUANGPIN_*` | 中国 = `vsgo` |
 | Zhuyin (Daqian) | ✅ **experimental**, off | `Scheme.ZHUYIN_DACHEN` | 中国 = `5j/eji` |
-| Fuzzy sounds ×7 | ✅ all off | `Builder.fuzzyXxx(...)`, `allFuzzy(b)` | with `fuzzyZhZ`, `zong国` matches 中国 |
-| Simplified ↔ Traditional | ⚠️ **no cross-match** (see §5) | follows the dictionary | traditional text itself is searchable by pinyin |
+| Fuzzy sounds ×7 | ✅ all off | `Builder.fuzzyXxx(...)` ×7, `allFuzzy(b)` | with `fuzzyZhZ`, `zong国` matches 中国 |
+| Simplified ↔ Traditional | ⚠️ **no cross-match** | follows the dictionary | traditional text itself is searchable by pinyin |
 | Immediate / indexed matching | ✅ | `matches(...)` / `Profile.Engine` (default `LOOP`) | — |
 | `accelerate` | ✅ on | `Profile.accelerate()` | — |
 | Glyph/auxiliary codes | ❌ never | — | PinIn does not support them |
-| Word-level polyphone override | ❌ not in v1.0 | `Profile.readingOverride` planned for v1.1 | see §5 |
+| Word-level polyphone override | ❌ not in v1.0 | `Profile.readingOverride` planned for v1.1 | see [`docs/API.md`](docs/API.md) §7 |
 | English substring (case-insensitive) | ✅ | literal path | `diamond` → `Diamond Sword` |
 | English initials | ❌ | — | `DS` does **not** match `Diamond Sword` |
 
-**Why these defaults:** initials/abbreviation/tones are strict supersets (no extra false positives), so they
-are on; fuzzy sounds *widen* matching and shuangpin/zhuyin *change how the query is parsed*, so they are off
-and must be opted into. `accelerate` is on because the main use case is one query × many texts.
-The default engine is `LOOP`, so "found by brute force but not by the index" can never happen on the default path.
+**Why these defaults:** initials/abbreviations/tones are pure gains (no extra false positives), so they are on;
+fuzzy sounds *widen* matching and shuangpin/zhuyin *change how the query is parsed*, so they are off and must be
+opted into; `accelerate` is on because the main use case is one query × many texts; the default engine is `LOOP`,
+so "found by brute force but not by the index" can never happen on the default path.
 
-## 3. Semantics
+---
 
-| Case | Behaviour |
-|---|---|
-| `text == null` or `query == null` | `matches` → `true` (treated as empty query) |
-| empty / blank query | `matches` → `true`; `Matcher.search*` → every index |
-| any internal error | captured, degrades to literal `contains`, **never throws** |
-| normalization | lower-case + full-width→half-width + strip; done by the library |
-| `Matcher` input type | `List<String>` (not `Collection`) — returned indices only make sense on a stable ordered list |
-| `null` elements in `pool` | indexed as `""`, but always match (because `matches(null, q) == true`) and are returned as `null` |
-| threads | **client main thread only**; a built index is read-only, so "build async → use on main thread" is fine |
-| side effects | none — no logging, no global state, no event registration |
+## 3. Performance (two sentences to remember)
 
-**Equivalence guarantee.** For the same pool/query/Profile,
-`matcher(pool, p).searchIndices(query)` equals the set of indices where `matches(pool[i], query, p)` is true.
-That holds *by construction* for `Engine.LOOP` (the default). `SIMPLE / TREE / CACHED` are opt-in optimizations
-(they passed the equivalence test with PinIn 1.6.0 in this repo, but you own that premise).
-
-## 4. Performance & memory
-
-PinIn's own benchmark (37k entries / ~400k chars / ~900KB sample):
-`TreeSearcher` 210 ms build, 0.19 ms search, 9.50 MB; `SimpleSearcher` 27 ms / 9.1 ms / 1.84 MB;
-`CachedSearcher` 28 ms (+16 ms warm-up) / 0.55 ms; brute-force pinyin matched (= our `LOOP`) 23 ms.
+- **Small lists**: call `PinyinSearch.matches(...)` directly — microseconds per call, recomputing on every keystroke is fine.
+- **Large lists**: `PinyinSearch.matcher(pool)` + the default `LOOP` (no real index) is the **safe default**; 10k entries cost about 1/4 of "brute-force pinyin matching".
+- **Index engines** (`SIMPLE / TREE / CACHED`): build **synchronously** when you create the `Matcher` — use them for large pools with verified equivalence, and **never inside a render or input callback**.
 
 > ⚠️ **A `Profile` is a description, not a disposable object.**
-> Constructing `PinIn` parses the whole dictionary. Engines are cached per `Profile`
-> (cache capacity: 16, LRU eviction). Build a *few* profiles at init and reuse them —
+> Constructing `PinIn` parses the whole dictionary (`TreeSearcher` is about **9.5 MB** per instance).
+> Engines are cached per `Profile` (capacity 16, LRU eviction). Build a *few* profiles at init and reuse them —
 > do **not** call `build()` on a hot path.
 
-`Engine.SIMPLE/TREE/CACHED` build their index **synchronously** when you create the `Matcher` —
-never do that inside a render or input callback.
+PinIn's own benchmark (37k entries / ~400k chars / ~900KB sample) and per-path costs → [`docs/API.md`](docs/API.md)
 
-## 5. Known limitations (measured, not guessed)
+---
 
-Assertions for all of these live in `KnownBehaviorTest`.
+## 4. The five easiest ways to get bitten
 
-| Limitation | Measured behaviour |
+1. `text` / `query` being `null` → `matches` returns `true` (treated as an empty query); no need to null-check.
+2. Any internal error is captured and degrades to literal `contains` — it **never throws**.
+3. `Matcher` takes a `List<String>` (not a `Collection`) — returned **indices** only make sense on a stable ordered list.
+4. Threads: **client main thread only**; a built index is read-only, so "build async → use on the main thread" is safe.
+5. Simplified ↔ Traditional **do not cross-match**: `钻石剑` does not find `鑽石劍` (but traditional text itself is pinyin-searchable).
+
+Other measured findings (polyphones, tone position, pure numeric queries, English substrings, index-engine
+equivalence…) → [`docs/API.md`](docs/API.md) §7; the regression assertions live in `KnownBehaviorTest`.
+
+---
+
+## 5. Coexistence with JustEnoughCharacters (JECh)
+
+| Aspect | Verdict |
 |---|---|
-| Context-sensitive polyphones | Every reading of a character participates, so 重庆 matches both `chongqing` and `zhongqing`; there is **no word-level control** (v1.0). `Profile.readingOverride` is planned for v1.1 |
-| Glyph/auxiliary codes | Do not exist and will never be added |
-| Simplified ↔ Traditional | ❌ no cross-match (`钻石剑` ✗ `鑽石劍`), but traditional text *is* pinyin-searchable (`鑽石劍` + `zsj` ✅) |
-| Shuangpin / Zhuyin | Work (`中国` = `vsgo` / `5j/eji`) but are **experimental** |
-| Pure numeric query | `铁砧` + `1` → no match, no misparse. Tones *are* validated: `tie3` ✅ / `tie1` ❌ |
-| Tone position | Must follow a **complete syllable**: `zhong1国` ✅, `zhen1` ✅, `zh1国` ❌ |
-| English substring | ✅ `diamond` / `word` → `Diamond Sword` (case-insensitive, anywhere), but `diamonds` ❌ |
-| English initials | ❌ `DS` does not match `Diamond Sword` |
+| Class conflict | **None.** PinIn is relocated to `com.pinyinsearch.shaded.pinin`; the jar contains **no** `me/towdium/pinin/**` |
+| Behaviour | **May differ**: JECh's own config (fuzzy sounds, scheme) is independent from this library's `Profile`, so the same text can match differently in two search boxes |
+| Reads JECh config? | **No.** Reading it would couple this library to someone else's internals |
+| Positioning | JECh patches *other* mods via coremod call sites; this library serves mods that *choose* to integrate. Opposite approaches, so they do not compete |
 
-### ⚠️ Two places where the original design doc's table was wrong
+---
 
-| Case | Doc says | Measured | Reason |
-|---|---|---|---|
-| `中国` + `z国` | ❌ | ✅ | `z` is a *legitimate* abbreviation of `zhong` (same mechanism as `zsj` → 钻石剑); it is not the fuzzy sound `zh → z`. The real fuzzy case, `zong国`, is indeed ❌ |
-| `中国` + `zh1国` | ✅ | ❌ | Tone digits must follow a complete syllable; PinIn does not accept them after a bare initial |
+## 6. Bundled PinIn (compliance)
 
-This library invents no pinyin logic, so it reports the real behaviour instead of patching around it.
+- Upstream [Towdium/PinIn](https://github.com/Towdium/PinIn) (MIT), version **1.6.0** (default branch `master`).
+- All **16 source files vendored, nothing stripped** (PinIn may use reflection / dynamic loading; trimming could
+  compile fine and only explode at runtime).
+- **The only modification is the package relocation**: `me.towdium.pinin` → `com.pinyinsearch.shaded.pinin`, with the
+  pinyin table resource moved to `com/pinyinsearch/shaded/pinin/data.txt` (`DictLoader.Default` uses
+  `PinIn.class.getResourceAsStream("data.txt")`, so the package-relative path follows automatically).
+  Every file carries a header comment describing the change, to ease future diffs against upstream.
+- **fastutil**: upstream declares `8.3.0`, Minecraft 1.20.1 ships **8.5.9** (same major) → Minecraft's fastutil is
+  reused and **nothing extra is bundled**.
+- Compliance: `LICENSE` (MIT) and `LICENSE-Pinin.txt` (PinIn's original MIT text) ship at the repo root *and* inside the jar.
+- **All pinyin logic comes from PinIn; this library invents none of it.**
 
-## 6. Integration
+---
 
-**Soft dependency:** see §1 — install once for the whole pack, your jar stays small.
+## 7. Integration and coordinates
 
-**Hard dependency + jarJar (transparent to players):**
-
-```gradle
-dependencies {
-    compileOnly 'com.github.2779789119:pinyinsearch:1.1.0'
-    jarJar      'com.github.2779789119:pinyinsearch:1.1.0'
-}
-```
-
-```toml
-[[dependencies.yourmod]]
-modId = "pinyin_search"
-mandatory = false
-versionRange = "[1.0.0,2.0.0)"
-ordering = "NONE"
-side = "BOTH"
-```
-
-Verify these four things once, when you first integrate: (1) a pack with only your embedded mod works;
-(2) two mods both embedding the library start fine; (3) player installs both the standalone library *and* an
-embedding mod (duplicate modId?) — document which one to choose; (4) loading together with JECh causes no
-class conflict. The library is stateless, so even two copies cannot corrupt each other — worst case is one
-extra copy in memory.
-
-**Maven coordinates** (JitPack format is `com.github.User:Repo:Tag`):
+- **Soft dependency** (see §1): install once for the whole pack, consistent behaviour, your jar stays small.
+- **Hard dependency + jarJar** (transparent to players): embed it in your own jar; costs ~204KB per embedding mod.
 
 ```gradle
-compileOnly 'com.github.2779789119:pinyinsearch:1.1.0'
+compileOnly 'com.github.2779789119:pinyinsearch:1.1.1'            // ✅
+compileOnly 'com.github.2779789119:pinyinsearch:1.1.1:javadoc'    // Chinese JavaDoc on hover
+compileOnly 'com.github.2779789119:pinyinsearch:1.1.1:sources'
+// compileOnly 'com.github.2779789119.pinyinsearch:pinyin_search:1.1.1'  // ❌ do not write com.github.User.Repo
 ```
 
-## 7. Coexistence with JustEnoughCharacters
+Coordinates follow JitPack's `com.github.User:Repo:Tag` — the artifactId is the repository name, which is
+**case-sensitive**: always write the lowercase `pinyinsearch`.
 
-No class conflict: PinIn is relocated to `com.pinyinsearch.shaded.pinin` and the jar contains
-**no** `me/towdium/pinin/**`. Behaviour may differ: JECh's own config (fuzzy sounds, scheme) is independent
-from this library's `Profile`, and this library deliberately **does not read** JECh's config.
+**Verify these four things once, when you first integrate:** (1) a pack with only your embedding mod works;
+(2) two mods both embedding the library start fine; (3) a player installing both the standalone library *and* an
+embedding mod (duplicate modId?); (4) loading together with JECh causes no class conflict.
+The library is **stateless**, so even two copies cannot corrupt each other — worst case is one extra copy in memory.
 
-JECh patches *other* mods via coremod call sites; this library serves mods that *choose* to integrate.
-Opposite approaches, so they do not compete.
+Full integration template (bridge class + three search-box recipes) → [`docs/INTEGRATION.md`](docs/INTEGRATION.md)
 
-## 8. Bundled PinIn
+---
 
-Vendored from <https://github.com/Towdium/PinIn> (MIT), version **1.6.0**, all 16 source files, **nothing
-stripped**. The only modification is the package relocation
-(`me.towdium.pinin` → `com.pinyinsearch.shaded.pinin`) and the matching resource path
-(`com/pinyinsearch/shaded/pinin/data.txt`). Each file carries a header comment describing it.
-
-`fastutil`: upstream declares 8.3.0, Minecraft 1.20.1 ships **8.5.9** (same major) → the library reuses
-Minecraft's fastutil and bundles nothing extra. Compliance: `LICENSE` (MIT) and `LICENSE-Pinin.txt` are at
-the repo root *and* inside the jar.
-
-## 9. Build & test
+## 8. Build & test
 
 ```bash
-./gradlew build   # compile + all JUnit tests + jar
-./gradlew test    # tests only
+./gradlew build            # compile + all JUnit tests + jars (incl. -sources.jar / -javadoc.jar)
+./gradlew test             # tests only
+./gradlew javadocToDocs    # generate API docs and sync into docs/apidocs
 ```
 
-Tests are plain JUnit 5, table-driven, and do not need a Minecraft runtime. CI
-(`.github/workflows/build.yml`) runs build + tests on push/PR and publishes on `v*` tags for JitPack.
+Tests are plain **JUnit 5, table-driven**, and do not need a Minecraft runtime. CI: `.github/workflows/build.yml`.
+
+---
+
+## 9. Compatibility promise and non-goals
+
+- **Within 1.x**: every public type in the `api` package keeps its existing method signatures and public fields —
+  nothing is changed or removed, only **additions** are allowed. See [`docs/API.md`](docs/API.md) §6.
+- **Non-goals**: ❌ no mixin into other mods' GUIs / `EditBox` / container screens; ❌ no JEI / REI search takeover;
+  ❌ no IME handling, no simplified↔traditional conversion, no word segmentation, no glyph/auxiliary codes;
+  ❌ no player-facing config UI; ❌ 1.20.1 Forge only for now.
