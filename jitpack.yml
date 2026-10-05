@@ -1,0 +1,6 @@
+# JitPack 构建配置
+#
+# 本模组要求 Java 17（MC 1.20.1 / Forge 47.x，见 build.gradle 的 toolchain）。
+# JitPack 默认使用 OpenJDK 8，不显式指定会直接编译失败。
+jdk:
+  - openjdk17
