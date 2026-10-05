@@ -36,7 +36,7 @@ repositories { maven { url 'https://jitpack.io' } }
 
 dependencies {
     // 软依赖：只编译期需要，运行期靠玩家 / 整合包安装
-    compileOnly 'com.github.2779789119:pinyinsearch:1.1.1'
+    compileOnly 'com.github.2779789119:pinyinsearch:1.1.2'
 }
 ```
 
@@ -158,10 +158,10 @@ PinIn 官方实测数据（37k 词条 / ~400k 字符 / ~900KB 样本）与逐项
 - **硬依赖 + jarJar**（玩家无感）：`jarJar` 嵌进自己的 jar，代价是每个依赖方各带一份 ~204KB。
 
 ```gradle
-compileOnly 'com.github.2779789119:pinyinsearch:1.1.1'            // ✅
-compileOnly 'com.github.2779789119:pinyinsearch:1.1.1:javadoc'    // IDE 悬停看中文 JavaDoc
-compileOnly 'com.github.2779789119:pinyinsearch:1.1.1:sources'
-// compileOnly 'com.github.2779789119.pinyinsearch:pinyin_search:1.1.1'  // ❌ 不要写成 com.github.User.Repo
+compileOnly 'com.github.2779789119:pinyinsearch:1.1.2'            // ✅
+compileOnly 'com.github.2779789119:pinyinsearch:1.1.2:javadoc'    // IDE 悬停看中文 JavaDoc
+compileOnly 'com.github.2779789119:pinyinsearch:1.1.2:sources'
+// compileOnly 'com.github.2779789119.pinyinsearch:pinyin_search:1.1.2'  // ❌ 不要写成 com.github.User.Repo
 ```
 
 坐标是 JitPack 的 `com.github.User:Repo:Tag` —— artifactId 就是仓库名，**区分大小写**，务必写小写 `pinyinsearch`。

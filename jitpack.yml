@@ -1,6 +1,27 @@
 # JitPack 构建配置
 #
-# 本模组要求 Java 17（MC 1.20.1 / Forge 47.x，见 build.gradle 的 toolchain）。
-# JitPack 默认使用 OpenJDK 8，不显式指定会直接编译失败。
+# 1) JDK：本模组要求 Java 17（MC 1.20.1 / Forge 47.x，见 build.gradle 的 toolchain）。
+#    JitPack 默认使用 OpenJDK 8，不显式指定会直接编译失败。
 jdk:
   - openjdk17
+
+# 2) ★ 正式构建必须带 --no-daemon，否则 ForgeGradle 6 在 JitPack 上必崩。
+#
+#    JitPack 的流程是：先跑一次 `./gradlew tasks --all` 探测任务，再跑正式构建；
+#    两次默认复用同一个常驻 Gradle daemon（日志里那句 "Starting 2nd build in daemon"）。
+#    ForgeGradle 6 的 MCP 执行步骤（ExecuteFunction → JavaToolchainService#launcherFor）
+#    会把 project 作用域的服务缓存进 JVM 静态状态；第二次构建复用时，它拿到的仍是
+#    上一次构建已经关闭的 ProjectScopeServices，于是在配置阶段直接抛：
+#        Could not create an instance of type
+#          org.gradle.jvm.toolchain.internal.DefaultToolchainSpec
+#        Caused by: java.lang.IllegalStateException: ProjectScopeServices has been closed
+#
+#    连锁后果：downloadServer / extractServer 没跑完 → ForgeGradle 自产的 joined jar
+#    没装进本地 MCPRepo → 报
+#        Error getting artifact: net.minecraft:joined:...:srg@jar from MCPRepo
+#    → 它生成的 Start.java 编译时找不到 net.minecraft.client.main.Main。
+#
+#    加 --no-daemon 让正式构建跑在一次性 JVM 里，与探测步骤彻底断开，问题即消失。
+#    （只对 JitPack 生效，本地构建节奏不受影响。）
+install:
+  - ./gradlew clean -Pgroup=$GROUP -Pversion=$VERSION -xtest assemble publishToMavenLocal --no-daemon --console=plain
