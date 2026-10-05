@@ -1,0 +1,145 @@
+buildscript {
+    repositories {
+        maven { url = 'https://maven.minecraftforge.net' }
+        mavenCentral()
+    }
+    dependencies {
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '6.0.+', changing: true
+    }
+}
+
+apply plugin: 'net.minecraftforge.gradle'
+apply plugin: 'eclipse'
+apply plugin: 'maven-publish'
+
+version = "${mod_version}"
+group = 'com.pinyinsearch'
+archivesBaseName = "pinyin_search-${minecraft_version}"
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
+
+minecraft {
+    mappings channel: "${mappings_channel}", version: "${mappings_version}"
+
+    runs {
+        configureEach {
+            workingDirectory project.file('run')
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                "${mod_id}" {
+                    source sourceSets.main
+                }
+            }
+        }
+
+        client {
+        }
+
+        server {
+            args '--nogui'
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+
+    // ★ 不引入 PinIn 依赖：PinIn 源码已 vendor 进 src/main/java（包名已重定位）
+    // ★ 不需要 Shadow / relocation 插件
+    // ★ 不引入 fastutil 依赖：直接复用 MC 自带的 fastutil（版本比对见 README）
+
+    // 纯 JUnit 表驱动测试（匹配逻辑不依赖 MC 运行时，CI 里也能跑）
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
+}
+
+// ============================================================
+// mods.toml 版本号注入（只替换 mod_version，中文作者名直接写在 toml 里）
+// ============================================================
+tasks.named('processResources', ProcessResources).configure {
+    // mods.toml 是 UTF-8 且含中文（作者名）；显式指定过滤字符集，避免跟随平台默认字符集
+    filteringCharset = 'UTF-8'
+    var replaceProperties = [
+            mod_version: mod_version,
+    ]
+    inputs.properties replaceProperties
+
+    filesMatching(['META-INF/mods.toml']) {
+        expand replaceProperties
+    }
+}
+
+jar {
+    manifest {
+        attributes([
+                "Specification-Title"     : mod_id,
+                "Specification-Vendor"    : "pinyin_search authors",
+                "Specification-Version"   : "1",
+                "Implementation-Title"    : project.name,
+                "Implementation-Version"  : project.jar.archiveVersion,
+                "Implementation-Vendor"   : "pinyin_search authors",
+                "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+}
+
+jar.finalizedBy('reobfJar')
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+        showStandardStreams = true
+        exceptionFormat = 'full'
+    }
+}
+
+// ============================================================
+// API 文档（给依赖方看）
+//   * sources / javadoc 附加产物：JitPack 会一并发布，依赖方在 IDE 里悬停
+//     API 时能直接看到完整中文 JavaDoc（含 §4 要求的参数/返回/null/线程/异常说明）
+//   * javadoc 任务：只对 api 包（+ 模组入口）出文档 —— 与文档 §4「api 包是唯一对外稳定面」一致，
+//     vendored 的 PinIn 与 impl 包不对外承诺兼容性，不发布文档
+// ============================================================
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
+tasks.named('javadoc', Javadoc).configure {
+    source = sourceSets.main.allJava.matching {
+        include '**/api/**'
+        include '**/PinyinSearchMod.java'
+    }.asFileTree
+
+    // 中文 JavaDoc 必须显式指定编码与语言，否则乱码 / 导航栏是英文
+    options.encoding = 'UTF-8'
+    options.docEncoding = 'UTF-8'
+    options.charSet = 'UTF-8'
+    options.locale = 'zh_CN'
+    options.windowTitle = "Pinyin Search API ${version}"
+    options.header = "Pinyin Search API ${version}"
+    options.links('https://docs.oracle.com/en/java/javase/17/docs/api/')
+    // 不因为缺 @param 之类的 lint 让构建失败（公开 API 的 JavaDoc 完整性由 review 保证）
+    options.addStringOption('Xdoclint:none', '-quiet')
+    failOnError = false
+}
+
+// 把文档输出到仓库内的固定目录，方便本地直接打开查看（build/ 会被 clean 掉）
+tasks.register('javadocToDocs', Copy) {
+    group = 'documentation'
+    description = '把 javadoc 输出复制到 docs/apidocs，供本地 / GitHub Pages 直接浏览'
+    dependsOn tasks.named('javadoc')
+    from tasks.named('javadoc').map { it.destinationDir }
+    into layout.projectDirectory.dir('docs/apidocs')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

@@ -1,0 +1,32 @@
+modLoader = "javafml"
+loaderVersion = "[47,)"
+# ★ license 必须放在 header 部分（与 modLoader / loaderVersion 同级），放进 [[mods]] 会导致 ModLoadingException
+license = "MIT"
+issueTrackerURL = "https://github.com/2779789119/pinyinsearch/issues"
+
+[[mods]]
+modId = "pinyin_search"
+version = "${mod_version}"
+displayName = "Pinyin Search API"
+authors = "佚名既无名"
+description = '''
+A pinyin search library for mod developers. No GUI injection, no JEI/REI takeover.
+
+Bundles a relocated copy of PinIn (MIT) so that it can be used both as a standalone
+mod and as a jarJar-embedded dependency. Class names are relocated to avoid conflicts
+with JustEnoughCharacters.
+'''
+
+[[dependencies.pinyin_search]]
+modId = "forge"
+mandatory = true
+versionRange = "[47,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.pinyin_search]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.20.1,1.21)"
+ordering = "NONE"
+side = "BOTH"

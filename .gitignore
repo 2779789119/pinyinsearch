@@ -1,0 +1,21 @@
+# Gradle
+.gradle/
+build/
+out/
+
+# 开发运行目录 / 临时目录
+run/
+.tmp/
+
+# IDE
+.idea/
+*.iml
+.eclipse/
+.settings/
+.classpath
+.project
+.vscode/
+
+# OS
+Thumbs.db
+.DS_Store
